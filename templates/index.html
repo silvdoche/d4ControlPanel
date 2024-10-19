@@ -23,6 +23,50 @@
         .timestamp {
             color: #888;
         }
+        .item-card {
+            background: transparent;  /* Make background transparent */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 0;  /* Remove padding */
+            margin-bottom: 1rem;
+            position: relative;  /* For price bar positioning */
+        }
+
+        .item-image {
+            width: 360px;     /* Base width */
+            height: 470px;    /* Base height */
+            object-fit: contain;
+            margin: 0;        /* Remove margins */
+        }
+
+        .item-price {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            font-size: 1.1rem;
+            color: #fff;
+            font-weight: 600;
+            background: rgba(40, 167, 69, 0.8);  /* Semi-transparent green */
+            padding: 0.5rem;
+            text-align: center;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .btn-danger {
+            border-radius: 0 0 8px 8px;  /* Round only bottom corners */
+            margin: 0;
+            width: 100%;
+        }
+
+        /* Grid layout styles */
+        #itemGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+            gap: 1rem;
+            padding: 1rem;
+        }
     </style>
 </head>
 <body class="bg-dark text-white">
@@ -57,9 +101,11 @@
                 <button class="btn btn-sm btn-outline-light" onclick="clearConsole()">Clear Console</button>
             </div>
             <div id="console">
-                <pre id="console-output">System initialized. Ready for commands...</pre>
             </div>
         </div>
+    </div>
+    <div class="item-grid" id="itemGrid">
+        <!-- Items will be dynamically added here -->
     </div>
 </div>
 
@@ -302,6 +348,107 @@ window.addEventListener('beforeunload', function() {
         });
     }
 });
+const itemGrid = document.getElementById('itemGrid');
+
+// Function to format price
+function formatPrice(price) {
+    if (price >= 1_000_000_000) {
+        return (price / 1_000_000_000).toFixed(1) + 'b';
+    } else if (price >= 1_000_000) {
+        return (price / 1_000_000).toFixed(1) + 'm';
+    }
+    return price.toString();
+}
+
+// Function to load and display items
+async function loadItems() {
+    try {
+        const response = await fetch('/api/items');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const items = await response.json();
+        
+        if (items.error) {
+            console.error('Server error:', items.error);
+            appendToConsole('Error loading items: ' + items.error);
+            return;
+        }
+
+        // Clear existing items
+        itemGrid.innerHTML = '';
+        
+        // Add all items to the grid
+        items.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'item-card';
+            itemElement.innerHTML = `
+                <div class="item-price">${formatPrice(item.price)}</div>
+                <img src="${item.image || '/templates/default.png'}" 
+                     alt="${item.name}" 
+                     class="item-image"
+                     onerror="this.src='/templates/default.png'">
+                <button class="btn btn-danger" 
+                        onclick="deleteItem('${item.folder_name}')">
+                    Delete Item
+                </button>
+            `;
+            itemGrid.appendChild(itemElement);
+        });
+
+        // Update console with item count
+        appendToConsole(`Loaded ${items.length} items`);
+    } catch (error) {
+        console.error('Error loading items:', error);
+        appendToConsole('Error loading items: ' + error.message);
+    }
+}
+
+// Update the polling interval (optional: adjust the time if needed)
+setInterval(() => {
+    if (document.getElementById('startCapture').textContent === 'Stop Capture') {
+        loadItems();
+    }
+}, 2000);
+
+// Make sure to load items when the page loads
+document.addEventListener('DOMContentLoaded', loadItems);
+// Function to delete an item
+async function deleteItem(itemId) {
+    try {
+        const response = await fetch('/api/items/' + encodeURIComponent(itemId), {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            loadItems(); // Reload the grid
+            appendToConsole(`Deleted item: ${itemId}`);
+        } else {
+            throw new Error('Failed to delete item');
+        }
+    } catch (error) {
+        console.error('Error deleting item:', error);
+        appendToConsole('Error deleting item: ' + error.message);
+    }
+}
+
+// Function to append text to console
+function appendToConsole(text) {
+    const consoleOutput = document.getElementById('console');
+    const timestamp = new Date().toLocaleTimeString();
+    consoleOutput.textContent += `\n[${timestamp}] ${text}`;
+    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+}
+
+// Poll for new items when capture is active
+setInterval(() => {
+    if (document.getElementById('startCapture').textContent === 'Stop Capture') {
+        loadItems();
+    }
+}, 2000);
+
+// Initial load
+loadItems();
 </script>
 
 </body>
