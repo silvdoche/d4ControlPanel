@@ -20,12 +20,11 @@ This application provides a control panel for managing Diablo 4 trade listings. 
      ```bash
      chrome.exe --remote-debugging-port=9222
      ```
-   * **(Optional) Keep Chrome Running in the Background:**  If you want the Chrome window to remain open but minimized, you can use the following command instead:
+    * You can create a shortcut for chrome.exe and add the remote debugging flag to it using the following command:
      ```bash
-     start /min chrome.exe --remote-debugging-port=9222
+     "C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222
      ```
-     This uses the `start /min` command on Windows to start Chrome minimized.  Adjust this command appropriately for other operating systems if needed.
-
+   * **(Optional) It is recommended to run the app.py in different browser like Edge or Firefox:**  
 2. **Run the Flask Application:**
    * Navigate to the project directory in your terminal.
    * Run the `app.py` script:
