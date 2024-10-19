@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diablo Trade Control Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        #console {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            background: #111212;  /* Preserving your original background color */
+        }
+        .console-line {
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
+        .timestamp {
+            color: #888;
+        }
+    </style>
+</head>
+<body class="bg-dark text-white">
+
+<div class="container mt-5">
+    <h1 class="text-center mb-4">Diablo Trade Control Panel</h1>
+
+    <div class="row">
+        <div class="col-md-4">
+            <!-- Directory Input -->
+            <div class="mb-3">
+                <label for="directory" class="form-label">Working Directory</label>
+                <input type="text" id="directory" class="form-control" value="C:\items">
+            </div>
+
+            <button class="btn btn-primary btn-block w-100 mb-2" onclick="sendRequest('delete_items')">Delete Items</button>
+            <button class="btn btn-secondary btn-block w-100 mb-2" onclick="sendRequest('post_items')">Post Items</button>
+            
+            <!-- Cut Price Section -->
+            <label for="cutPercentage" class="form-label">Cut Percentage (%)</label>
+            <input type="number" id="cutPercentage" class="form-control mb-2" value="10" min="0" max="100">
+            <button class="btn btn-info btn-block w-100 mb-2" onclick="cutPrices()">Cut Prices</button>
+
+            <button id="captureToggle" class="btn btn-success btn-block w-100 mb-2" onclick="toggleCapture()">
+                Start Capture
+            </button>
+        </div>
+
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="mb-0">Console Output:</h4>
+                <button class="btn btn-sm btn-outline-light" onclick="clearConsole()">Clear Console</button>
+            </div>
+            <div id="console">
+                <pre id="console-output">System initialized. Ready for commands...</pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap 5 JS + Popper.js -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- jQuery for AJAX -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    function getTimestamp() {
+        return new Date().toLocaleTimeString();
+    }
+
+    function getDirectory() {
+        return $('#directory').val().trim() || "C:\\Users\\zeros\\Desktop\\d4web\\items";
+    }
+
+    function sendRequest(route) {
+        const requestData = {
+            directory: getDirectory()
+        };
+
+        // Disable all buttons during request
+        $('button').prop('disabled', true);
+
+        $.ajax({
+            url: '/' + route,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(requestData),
+            success: function(response) {
+                updateConsole(response.message, 'success');
+                if (response.details) {
+                    console.log('Details:', response.details);
+                    updateConsole(JSON.stringify(response.details, null, 2), 'info');
+                }
+            },
+            error: function(xhr, status, error) {
+                let errorMessage = "Error occurred";
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseText) {
+                        errorMessage = xhr.responseText;
+                    }
+                } catch (e) {
+                    errorMessage = error || "Unknown error occurred";
+                }
+                updateConsole(errorMessage, 'error');
+            },
+            complete: function() {
+                // Re-enable all buttons after request completes
+                $('button').prop('disabled', false);
+            }
+        });
+    }
+
+    function cutPrices() {
+        const percent = parseFloat($('#cutPercentage').val());
+        if (isNaN(percent) || percent < 0 || percent > 100) {
+            updateConsole("Invalid percentage value. Please enter a number between 0 and 100.", 'error');
+            return;
+        }
+
+        const requestData = {
+            directory: getDirectory(),
+            percent: percent
+        };
+
+        // Disable all buttons during request
+        $('button').prop('disabled', true);
+
+        $.ajax({
+            url: '/cut_percent',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(requestData),
+            success: function(response) {
+                updateConsole(response.message, 'success');
+                if (response.details) {
+                    const details = `Processed files - Success: ${response.details.success_count}, Errors: ${response.details.error_count}`;
+                    updateConsole(details, 'info');
+                }
+            },
+            error: function(xhr, status, error) {
+                let errorMessage = "Error occurred";
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.responseText) {
+                        errorMessage = xhr.responseText;
+                    }
+                } catch (e) {
+                    errorMessage = error || "Unknown error occurred";
+                }
+                updateConsole(errorMessage, 'error');
+            },
+            complete: function() {
+                // Re-enable all buttons after request completes
+                $('button').prop('disabled', false);
+            }
+        });
+    }
+
+    function updateConsole(message, type = 'info') {
+        const timestamp = `<span class="timestamp">[${getTimestamp()}]</span>`;
+        let messageClass = '';
+        
+        switch(type) {
+            case 'error':
+                messageClass = 'error-message';
+                break;
+            case 'success':
+                messageClass = 'success-message';
+                break;
+            case 'warning':
+                messageClass = 'warning-message';
+                break;
+            default:
+                messageClass = '';
+        }
+
+        const formattedMessage = `${timestamp} <span class="${messageClass}">${message}</span>`;
+        const consoleOutput = $("#console-output");
+        consoleOutput.append("\n" + formattedMessage);
+        
+        const consoleDiv = document.getElementById("console");
+        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    function clearConsole() {
+        $("#console-output").html("Console cleared. Ready for new commands...");
+    }
+
+    // Initial console message
+    $(document).ready(function() {
+        updateConsole("System initialized. Ready for commands...", 'success');
+    });
+    let captureStatusInterval = null;
+
+function toggleCapture() {
+    const btn = $('#captureToggle');
+    const isStarting = btn.text().includes('Start');
+    
+    // Disable button during request
+    btn.prop('disabled', true);
+    
+    $.ajax({
+        url: '/capture_toggle',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            directory: getDirectory()
+        }),
+        success: function(response) {
+            if (response.is_capturing) {
+                btn.removeClass('btn-success').addClass('btn-danger');
+                btn.text('Stop Capture');
+                startStatusPolling();
+                updateConsole("Capture started successfully", 'success');
+            } else {
+                btn.removeClass('btn-danger').addClass('btn-success');
+                btn.text('Start Capture');
+                stopStatusPolling();
+                updateConsole("Capture stopped successfully", 'success');
+            }
+        },
+        error: function(xhr, status, error) {
+            updateConsole(`Failed to ${isStarting ? 'start' : 'stop'} capture: ${error}`, 'error');
+        },
+        complete: function() {
+            btn.prop('disabled', false);
+        }
+    });
+}
+
+function startStatusPolling() {
+    if (captureStatusInterval) {
+        clearInterval(captureStatusInterval);
+    }
+    
+    // Poll status every 1 second
+    captureStatusInterval = setInterval(checkCaptureStatus, 1000);
+}
+
+function stopStatusPolling() {
+    if (captureStatusInterval) {
+        clearInterval(captureStatusInterval);
+        captureStatusInterval = null;
+    }
+}
+
+function checkCaptureStatus() {
+    $.ajax({
+        url: '/capture_status',
+        type: 'GET',
+        success: function(response) {
+            if (!response.is_capturing) {
+                stopStatusPolling();
+                $('#captureToggle').removeClass('btn-danger').addClass('btn-success').text('Start Capture');
+                if (response.last_error) {
+                    updateConsole(`Capture stopped due to error: ${response.last_error}`, 'error');
+                }
+                return;
+            }
+            
+            // Display new captures
+            if (response.captured_items && response.captured_items.length > 0) {
+                response.captured_items.forEach(item => {
+                    const message = `Captured: ${item.item_name} (${item.price})`;
+                    if (!$('#console-output').text().includes(message)) {
+                        updateConsole(message, 'success');
+                    }
+                });
+            }
+            
+            if (response.last_error) {
+                updateConsole(`Capture error: ${response.last_error}`, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            updateConsole(`Status check failed: ${error}`, 'error');
+            stopStatusPolling();
+        }
+    });
+}
+
+// Add event listener for page unload to stop capture
+window.addEventListener('beforeunload', function() {
+    if ($('#captureToggle').text().includes('Stop')) {
+        $.ajax({
+            url: '/capture_toggle',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                directory: getDirectory()
+            }),
+            async: false
+        });
+    }
+});
+</script>
+
+</body>
+</html>
