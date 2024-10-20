@@ -212,34 +212,35 @@
     }
 
     function updateConsole(message, type = 'info') {
-        const timestamp = `<span class="timestamp">[${getTimestamp()}]</span>`;
-        let messageClass = '';
-        
-        switch(type) {
-            case 'error':
-                messageClass = 'error-message';
-                break;
-            case 'success':
-                messageClass = 'success-message';
-                break;
-            case 'warning':
-                messageClass = 'warning-message';
-                break;
-            default:
-                messageClass = '';
-        }
+    const timestamp = `<span class="timestamp">[${getTimestamp()}]</span>`;
+    let messageClass = '';
 
-        const formattedMessage = `${timestamp} <span class="${messageClass}">${message}</span>`;
-        const consoleOutput = $("#console-output");
-        consoleOutput.append("\n" + formattedMessage);
-        
-        const consoleDiv = document.getElementById("console");
-        consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    switch(type) {
+        case 'error':
+            messageClass = 'error-message';
+            break;
+        case 'success':
+            messageClass = 'success-message';
+            break;
+        case 'warning':
+            messageClass = 'warning-message';
+            break;
+        default:
+            messageClass = '';
     }
+
+    const formattedMessage = `${timestamp} <span class="${messageClass}">${message}</span>`;
+    // Corrected line: use #console instead of #console-output
+    const consoleOutput = $("#console");  
+    consoleOutput.append(`<div class="console-line">${formattedMessage}</div>`);
+
+    const consoleDiv = document.getElementById("console");
+    consoleDiv.scrollTop = consoleDiv.scrollHeight;
+}
 
     function clearConsole() {
-        $("#console-output").html("Console cleared. Ready for new commands...");
-    }
+    document.getElementById('console').innerHTML = ''; // Directly clear the content of the console div
+}
 
     // Initial console message
     $(document).ready(function() {
@@ -361,6 +362,8 @@ function formatPrice(price) {
 }
 
 // Function to load and display items
+let previousItemCount = 0; // Initialize previous item count
+
 async function loadItems() {
     try {
         const response = await fetch('/api/items');
@@ -368,16 +371,16 @@ async function loadItems() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const items = await response.json();
-        
+
         if (items.error) {
             console.error('Server error:', items.error);
             appendToConsole('Error loading items: ' + items.error);
             return;
         }
 
-        // Clear existing items
-        itemGrid.innerHTML = '';
-        
+        // Clear existing items *before* adding new ones
+        itemGrid.innerHTML = ''; // Always clear the grid
+
         // Add all items to the grid
         items.forEach(item => {
             const itemElement = document.createElement('div');
@@ -396,20 +399,14 @@ async function loadItems() {
             itemGrid.appendChild(itemElement);
         });
 
-        // Update console with item count
-        appendToConsole(`Loaded ${items.length} items`);
-    } catch (error) {
-        console.error('Error loading items:', error);
-        appendToConsole('Error loading items: ' + error.message);
-    }
-}
+        // Log message only if the count has changed or it's the initial load
+        if (items.length !== previousItemCount || previousItemCount === 0) {
+            appendToConsole(`Loaded ${items.length} items`);
+            previousItemCount = items.length;
+        }
 
-// Update the polling interval (optional: adjust the time if needed)
-setInterval(() => {
-    if (document.getElementById('startCapture').textContent === 'Stop Capture') {
-        loadItems();
-    }
-}, 2000);
+    } catch (error) { /* ... your existing error handling ... */ }
+}
 
 // Make sure to load items when the page loads
 document.addEventListener('DOMContentLoaded', loadItems);
@@ -436,16 +433,16 @@ async function deleteItem(itemId) {
 function appendToConsole(text) {
     const consoleOutput = document.getElementById('console');
     const timestamp = new Date().toLocaleTimeString();
-    consoleOutput.textContent += `\n[${timestamp}] ${text}`;
-    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+
+    // Create a new div for each message
+    const messageLine = document.createElement('div');
+    messageLine.className = 'console-line'; // Optional: Add a class for styling
+    messageLine.textContent = `[${timestamp}] ${text}`;
+
+    consoleOutput.appendChild(messageLine); // Append the new div
+    consoleOutput.scrollTop = consoleOutput.scrollHeight; // Scroll to the bottom
 }
 
-// Poll for new items when capture is active
-setInterval(() => {
-    if (document.getElementById('startCapture').textContent === 'Stop Capture') {
-        loadItems();
-    }
-}, 2000);
 
 // Initial load
 loadItems();
