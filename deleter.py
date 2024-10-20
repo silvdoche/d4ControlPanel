@@ -40,13 +40,17 @@ def delete_items():
                 div_ids.append(div_id)
 
         # Delete each offer by executing JavaScript in the browser
-        for div_id in div_ids:
-            delete_offer(driver, div_id)
+        if div_ids:
+            for div_id in div_ids:
+                delete_offer(driver, div_id)
+            message = f"Deleted {len(div_ids)} items."
+        else:
+            message = "No items found to delete." # Message if no items are found
 
-        return jsonify({"status": "success", "message": f"Deleted {len(div_ids)} items."})
+        return "success", message # Return status and message as a tuple
     
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        return "error", str(e) # Return status and error message as a tuple
     
     finally:
         driver.quit()

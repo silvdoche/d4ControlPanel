@@ -20,7 +20,12 @@ def index():
 def delete_items():
     try:
         result = deleter.delete_items()  # Call the deleter script
-        return jsonify({"status": "success", "message": result})
+        # Check if result is a tuple (status, message) or just a message
+        if isinstance(result, tuple):
+            status, message = result
+            return jsonify({"status": status, "message": message})
+        else:
+            return jsonify({"status": "success", "message": str(result)}) # Convert result to string
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)})
 
