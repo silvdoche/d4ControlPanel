@@ -366,7 +366,18 @@ function formatPrice(price) {
     }
     return price.toString();
 }
+function priceToNumber(priceString) {
+    const lastChar = priceString.slice(-1);
+    const numericPart = parseFloat(priceString.slice(0, -1));
 
+    if (lastChar === 'b') {
+        return numericPart * 1_000_000_000;
+    } else if (lastChar === 'm') {
+        return numericPart * 1_000_000;
+    } else {
+        return numericPart;
+    }
+}
 // Function to load and display items
 let previousItemCount = 0; // Initialize previous item count
 
@@ -383,7 +394,7 @@ async function loadItems() {
             appendToConsole('Error loading items: ' + items.error);
             return;
         }
-
+        items.sort((a, b) => priceToNumber(formatPrice(a.price)) - priceToNumber(formatPrice(b.price)));
         // Clear existing items *before* adding new ones
         itemGrid.innerHTML = ''; // Always clear the grid
 
