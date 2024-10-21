@@ -128,7 +128,13 @@
         const requestData = {
             directory: getDirectory()
         };
-
+        let initialMessage = "";
+        if (route === 'delete_items') {
+            initialMessage = "Deleting posted items, please wait...";
+        } else if (route === 'post_items') {
+            initialMessage = "Posting items, please wait...";
+        }
+        updateConsole(initialMessage, 'warning'); // Display initial message
         // Disable all buttons during request
         $('button').prop('disabled', true);
 
